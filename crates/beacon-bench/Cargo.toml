@@ -1,0 +1,21 @@
+[package]
+name = "beacon-bench"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Benchmark harness: training binary, baselines, correctness gate, per-adjoint-kernel time-saved proof"
+
+[features]
+default = []
+cuda = ["beacon-train/cuda", "beacon-cuda/cuda"]
+
+[dependencies]
+beacon-core = { workspace = true }
+beacon-nn = { workspace = true }
+beacon-train = { workspace = true }
+beacon-cuda = { workspace = true }
+
+[[bin]]
+name = "beacon-bench"
+path = "src/main.rs"

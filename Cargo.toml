@@ -1,0 +1,32 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/beacon-core",
+    "crates/beacon-adjoint-table",
+    "crates/beacon-macros",
+    "crates/beacon-cuda",
+    "crates/beacon-ops",
+    "crates/beacon-nn",
+    "crates/beacon-train",
+    "crates/beacon-bench",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.94"
+license = "MIT"
+
+[workspace.dependencies]
+beacon-core = { path = "crates/beacon-core" }
+beacon-adjoint-table = { path = "crates/beacon-adjoint-table" }
+beacon-macros = { path = "crates/beacon-macros" }
+beacon-cuda = { path = "crates/beacon-cuda" }
+beacon-ops = { path = "crates/beacon-ops" }
+beacon-nn = { path = "crates/beacon-nn" }
+beacon-train = { path = "crates/beacon-train" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

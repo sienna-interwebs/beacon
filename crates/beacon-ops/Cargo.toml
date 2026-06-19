@@ -1,0 +1,16 @@
+[package]
+name = "beacon-ops"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Differentiable ops (matmul, rmsnorm, layernorm, flash_attention, swiglu_mlp, residual_add) wired to the adjoint table"
+
+[features]
+default = []
+cuda = ["beacon-cuda/cuda"]
+
+[dependencies]
+beacon-core = { workspace = true }
+beacon-cuda = { workspace = true }
+beacon-adjoint-table = { workspace = true }

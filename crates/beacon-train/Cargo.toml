@@ -1,0 +1,16 @@
+[package]
+name = "beacon-train"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Fused Adam optimizer, training loop, gradient accumulation, fp32 master -> fp8 weights"
+
+[features]
+default = []
+cuda = ["beacon-nn/cuda"]
+
+[dependencies]
+beacon-core = { workspace = true }
+beacon-nn = { workspace = true }
+beacon-ops = { workspace = true }

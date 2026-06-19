@@ -1,0 +1,12 @@
+[package]
+name = "beacon-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "beacon core: dtype, shapes (const generics), tensor, storage, static arena, Saved<T> linear type"
+
+[dependencies]
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "warn"

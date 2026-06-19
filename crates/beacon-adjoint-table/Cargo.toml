@@ -1,0 +1,9 @@
+[package]
+name = "beacon-adjoint-table"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Shared const adjoint table (op -> adjoint kernel + grad metadata), depended on by both beacon-macros and beacon-ops"
+
+[dependencies]
