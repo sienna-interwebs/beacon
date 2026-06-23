@@ -12,3 +12,6 @@ cuda = []
 
 [dependencies]
 beacon-core = { workspace = true }
+
+[dev-dependencies]
+beacon-adjoint-table = { workspace = true }
