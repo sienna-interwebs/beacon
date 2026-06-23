@@ -4,3 +4,4 @@ Cargo.lock
 # fixtures / generated artifacts (added in later phases)
 *.npz
 *.ptx
+linear-deliverables.md
