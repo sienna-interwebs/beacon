@@ -1,6 +1,6 @@
 use crate::error::LaunchResult;
 use crate::launch::LaunchParams;
-use crate::launcher::{KernelArg, KernelId, KernelLauncher};
+use crate::launcher::{KernelArg, KernelLauncher};
 
 pub const NORM_BLOCK: u32 = 256;
 

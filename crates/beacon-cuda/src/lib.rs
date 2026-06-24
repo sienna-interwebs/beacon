@@ -10,6 +10,7 @@ pub mod launcher;
 pub mod matmul;
 pub mod mlp;
 pub mod norm;
+pub mod runtime;
 
 #[cfg(test)]
 mod testutil;
@@ -23,6 +24,7 @@ pub use launcher::{Access, KernelArg, KernelId, KernelLauncher};
 pub use matmul::MatmulLaunch;
 pub use mlp::SwigluLaunch;
 pub use norm::{LayerNormLaunch, RmsNormLaunch};
+pub use runtime::Launcher;
 
 #[cfg(test)]
 mod table_consistency {

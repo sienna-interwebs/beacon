@@ -1,6 +1,6 @@
 use crate::error::LaunchResult;
 use crate::launch::LaunchParams;
-use crate::launcher::{KernelArg, KernelId, KernelLauncher};
+use crate::launcher::{KernelArg, KernelLauncher};
 
 pub const ATTN_Q_TILE: usize = 64;
 pub const ATTN_BLOCK: u32 = 128;
