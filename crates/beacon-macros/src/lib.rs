@@ -1,1 +1,14 @@
-#![allow(dead_code)]
+use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse_macro_input, ItemFn};
+
+mod validate;
+
+#[proc_macro_attribute]
+pub fn differentiable(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let func = parse_macro_input!(item as ItemFn);
+    if let Err(e) = validate::check_signature(&func) {
+        return e.to_compile_error().into();
+    }
+    quote!(#func).into()
+}
