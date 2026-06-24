@@ -65,8 +65,8 @@ mod tests {
     #[test]
     fn accepts_typed_fn_with_return() {
         let f: ItemFn = parse_quote!(
-            fn block(x: u32, w: u32) -> u32 {
-                x + w
+            fn block(x: Tensor<F32, S2<8, 8>>, w: Tensor<F32, S2<8, 8>>) -> Tensor<F32, S2<8, 8>> {
+                x
             }
         );
         assert!(check_signature(&f).is_ok());
