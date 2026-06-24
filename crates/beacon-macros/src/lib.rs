@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, ItemFn};
 
+mod ops;
 mod signature;
 mod validate;
 
@@ -14,5 +15,9 @@ pub fn differentiable(_attr: TokenStream, item: TokenStream) -> TokenStream {
     if let Err(e) = signature::extract(&func) {
         return e.to_compile_error().into();
     }
+    let _ops = match ops::collect_ops(&func) {
+        Ok(v) => v,
+        Err(e) => return e.to_compile_error().into(),
+    };
     quote!(#func).into()
 }
