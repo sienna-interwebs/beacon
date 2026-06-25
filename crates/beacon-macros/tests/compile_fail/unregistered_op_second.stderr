@@ -1,0 +1,19 @@
+error: no registered adjoint for op `unknown_op`; add it to beacon-adjoint-table
+ --> tests/compile_fail/unregistered_op_second.rs:7:5
+  |
+7 |     unknown_op(a)
+  |     ^^^^^^^^^^
+
+warning: unused imports: `F32`, `S2`, and `Tensor`
+ --> tests/compile_fail/unregistered_op_second.rs:1:19
+  |
+1 | use beacon_core::{F32, S2, Tensor};
+  |                   ^^^  ^^  ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/compile_fail/unregistered_op_second.rs:8:2
+  |
+8 | }
+  |  ^ consider adding a `main` function to `$DIR/tests/compile_fail/unregistered_op_second.rs`

@@ -44,7 +44,7 @@ fn walk_expr(expr: &Expr, ops: &mut Vec<OpCall>) {
                 ops.push(OpCall {
                     name,
                     arg_count: call.args.len(),
-                    span: call.span(),
+                    span: call.func.span(),
                 });
             }
         }

@@ -10,9 +10,11 @@ description = "#[differentiable] proc macro: compile-time forward/backward gener
 proc-macro = true
 
 [dependencies]
+beacon-adjoint-table = { workspace = true }
 proc-macro2 = "1.0.106"
 quote = "1.0.46"
 syn = { version = "2.0.118", features = ["full"] }
 
 [dev-dependencies]
 beacon-core = { workspace = true }
+trybuild = "1.0"

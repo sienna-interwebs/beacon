@@ -1,0 +1,19 @@
+error: no registered adjoint for op `conv2d`; add it to beacon-adjoint-table
+ --> tests/compile_fail/unregistered_op.rs:6:5
+  |
+6 |     conv2d(x, w)
+  |     ^^^^^^
+
+warning: unused imports: `F32`, `S2`, and `Tensor`
+ --> tests/compile_fail/unregistered_op.rs:1:19
+  |
+1 | use beacon_core::{F32, S2, Tensor};
+  |                   ^^^  ^^  ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/compile_fail/unregistered_op.rs:7:2
+  |
+7 | }
+  |  ^ consider adding a `main` function to `$DIR/tests/compile_fail/unregistered_op.rs`
