@@ -91,7 +91,42 @@ fn pat_to_ident(pat: &Pat) -> syn::Result<Ident> {
     }
 }
 
-fn parse_tensor(ty: &Type) -> syn::Result<TensorSig> {
+pub struct ParsedTensor {
+    pub dtype: Ident,
+    pub tensor_ty: Type,
+}
+
+pub fn parse_tensor_type(ty: &Type) -> syn::Result<ParsedTensor> {
+    let sig = parse_tensor(ty)?;
+    Ok(ParsedTensor {
+        dtype: sig.dtype,
+        tensor_ty: ty.clone(),
+    })
+}
+
+pub fn tensor_parts(ty: &Type) -> syn::Result<(Ident, Type)> {
+    let Type::Path(TypePath { path, .. }) = ty else {
+        return Err(syn::Error::new_spanned(ty, "expected Tensor<T, S> type"));
+    };
+    let segment = path.segments.last().unwrap();
+    let args = match &segment.arguments {
+        syn::PathArguments::AngleBracketed(a) => &a.args,
+        _ => return Err(syn::Error::new_spanned(ty, "expected Tensor<T, S>")),
+    };
+    let (GenericArgument::Type(Type::Path(tp)), GenericArgument::Type(shape_ty)) =
+        (&args[0], &args[1])
+    else {
+        return Err(syn::Error::new_spanned(ty, "expected Tensor<T, S>"));
+    };
+    let dtype = tp
+        .path
+        .get_ident()
+        .cloned()
+        .ok_or_else(|| syn::Error::new_spanned(&args[0], "dtype must be a marker type"))?;
+    Ok((dtype, shape_ty.clone()))
+}
+
+pub(crate) fn parse_tensor(ty: &Type) -> syn::Result<TensorSig> {
     let Type::Path(TypePath { path, .. }) = ty else {
         return Err(syn::Error::new_spanned(ty, "expected Tensor<T, S> type"));
     };

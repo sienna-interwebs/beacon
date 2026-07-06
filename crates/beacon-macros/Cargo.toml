@@ -17,4 +17,5 @@ syn = { version = "2.0.118", features = ["full"] }
 
 [dev-dependencies]
 beacon-core = { workspace = true }
+beacon-cuda = { workspace = true }
 trybuild = "1.0"

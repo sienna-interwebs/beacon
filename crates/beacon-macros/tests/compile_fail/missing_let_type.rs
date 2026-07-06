@@ -7,6 +7,6 @@ fn rmsnorm(x: Tensor<F32, S2<4, 4>>, _w: Tensor<F32, S2<4, 4>>) -> Tensor<F32, S
 
 #[differentiable]
 fn bad(x: Tensor<F32, S2<4, 4>>) -> Tensor<F32, S2<4, 4>> {
-    let a: Tensor<F32, S2<4, 4>> = rmsnorm(x, x);
-    unknown_op(a)
+    let a = rmsnorm(x, x);
+    a
 }

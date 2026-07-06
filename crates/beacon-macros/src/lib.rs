@@ -1,8 +1,8 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::quote;
 use syn::{parse_macro_input, ItemFn};
 
+mod codegen;
 mod ops;
 mod resolve;
 mod signature;
@@ -14,18 +14,22 @@ pub fn differentiable(_attr: TokenStream, item: TokenStream) -> TokenStream {
     if let Err(e) = validate::check_signature(&func) {
         return e.to_compile_error().into();
     }
-    if let Err(e) = signature::extract(&func) {
-        return e.to_compile_error().into();
-    }
+    let sig = match signature::extract(&func) {
+        Ok(v) => v,
+        Err(e) => return e.to_compile_error().into(),
+    };
     let ops = match ops::collect_ops(&func) {
         Ok(v) => v,
         Err(e) => return e.to_compile_error().into(),
     };
-    let _resolved = match resolve::resolve_ops(&ops) {
+    let resolved = match resolve::resolve_ops(&ops) {
         Ok(v) => v,
         Err(errs) => return join_errors(errs).into(),
     };
-    quote!(#func).into()
+    match codegen::generate(&func, &sig, &resolved) {
+        Ok(generated) => generated.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
 }
 
 fn join_errors(errs: Vec<syn::Error>) -> TokenStream2 {

@@ -1,0 +1,21 @@
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/compile_fail/saved_use_after_consume.rs:7:2
+  |
+7 | }
+  |  ^ consider adding a `main` function to `$DIR/tests/compile_fail/saved_use_after_consume.rs`
+
+error[E0382]: use of moved value: `s`
+ --> tests/compile_fail/saved_use_after_consume.rs:6:13
+  |
+4 |     let s = Saved::<F32, S2<4, 4>>::at(0);
+  |         - move occurs because `s` has type `Saved<beacon_core::F32, S2<4, 4>>`, which does not implement the `Copy` trait
+5 |     let _ = s.consume();
+  |               --------- `s` moved due to this method call
+6 |     let _ = s.consume();
+  |             ^ value used here after move
+  |
+note: `Saved::<T, S>::consume` takes ownership of the receiver `self`, which moves `s`
+ --> $WORKSPACE/crates/beacon-core/src/saved.rs
+  |
+  |     pub fn consume(self) -> usize {
+  |                    ^^^^

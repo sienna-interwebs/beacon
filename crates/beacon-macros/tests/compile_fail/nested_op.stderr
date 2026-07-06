@@ -1,0 +1,11 @@
+error: nested op calls are not supported; bind each op to a typed let first
+  --> tests/compile_fail/nested_op.rs:14:12
+   |
+14 |     linear(rmsnorm(x, w), w)
+   |            ^^^^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+  --> tests/compile_fail/nested_op.rs:15:2
+   |
+15 | }
+   |  ^ consider adding a `main` function to `$DIR/tests/compile_fail/nested_op.rs`

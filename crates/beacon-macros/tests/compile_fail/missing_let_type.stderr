@@ -1,0 +1,11 @@
+error: intermediate op results require a type annotation: let x: Tensor<T, S> = op(...)
+  --> tests/compile_fail/missing_let_type.rs:10:9
+   |
+10 |     let a = rmsnorm(x, x);
+   |         ^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+  --> tests/compile_fail/missing_let_type.rs:12:2
+   |
+12 | }
+   |  ^ consider adding a `main` function to `$DIR/tests/compile_fail/missing_let_type.rs`

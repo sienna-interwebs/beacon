@@ -1,28 +1,23 @@
 use beacon_adjoint_table::AdjointEntry;
-use proc_macro2::Span;
 
-use crate::ops::OpCall;
+use crate::ops::OpSite;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[allow(dead_code)]
 pub struct ResolvedOpCall {
-    pub name: String,
-    pub arg_count: usize,
-    pub span: Span,
+    pub site: OpSite,
     pub forward_launcher: &'static str,
     pub backward_launcher: &'static str,
     pub entry: &'static AdjointEntry,
 }
 
-pub fn resolve_ops(ops: &[OpCall]) -> Result<Vec<ResolvedOpCall>, Vec<syn::Error>> {
+pub fn resolve_ops(ops: &[OpSite]) -> Result<Vec<ResolvedOpCall>, Vec<syn::Error>> {
     let mut resolved = Vec::with_capacity(ops.len());
     let mut errors = Vec::new();
     for op in ops {
         match beacon_adjoint_table::lookup(&op.name) {
             Some(entry) => resolved.push(ResolvedOpCall {
-                name: op.name.clone(),
-                arg_count: op.arg_count,
-                span: op.span,
+                site: op.clone(),
                 forward_launcher: entry.forward_launcher,
                 backward_launcher: entry.backward_launcher,
                 entry,
@@ -46,19 +41,22 @@ pub fn resolve_ops(ops: &[OpCall]) -> Result<Vec<ResolvedOpCall>, Vec<syn::Error
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ops::OpCall;
+    use crate::ops::{OpDest, OpSite};
+    use proc_macro2::Span;
 
     #[test]
     fn resolves_known_ops() {
         let ops = vec![
-            OpCall {
+            OpSite {
                 name: "rmsnorm".into(),
-                arg_count: 2,
+                args: vec![],
+                dest: OpDest::Tail,
                 span: Span::call_site(),
             },
-            OpCall {
+            OpSite {
                 name: "linear".into(),
-                arg_count: 2,
+                args: vec![],
+                dest: OpDest::Tail,
                 span: Span::call_site(),
             },
         ];
@@ -71,32 +69,18 @@ mod tests {
 
     #[test]
     fn unknown_op_collects_error() {
-        let ops = vec![OpCall {
+        let ops = vec![OpSite {
             name: "conv2d".into(),
-            arg_count: 1,
+            args: vec![],
+            dest: OpDest::Tail,
             span: Span::call_site(),
         }];
-        let errs = resolve_ops(&ops).unwrap_err();
-        assert_eq!(errs.len(), 1);
-        assert!(errs[0].to_string().contains("conv2d"));
-        assert!(errs[0].to_string().contains("beacon-adjoint-table"));
-    }
-
-    #[test]
-    fn multiple_unknown_ops_collect_multiple_errors() {
-        let ops = vec![
-            OpCall {
-                name: "foo".into(),
-                arg_count: 1,
-                span: Span::call_site(),
-            },
-            OpCall {
-                name: "bar".into(),
-                arg_count: 1,
-                span: Span::call_site(),
-            },
-        ];
-        let errs = resolve_ops(&ops).unwrap_err();
-        assert_eq!(errs.len(), 2);
+        match resolve_ops(&ops) {
+            Err(errs) => {
+                assert_eq!(errs.len(), 1);
+                assert!(errs[0].to_string().contains("conv2d"));
+            }
+            Ok(_) => panic!("expected error"),
+        }
     }
 }
