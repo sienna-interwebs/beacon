@@ -18,7 +18,14 @@ impl fmt::Display for LaunchError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             LaunchError::Unimplemented(what) => {
-                write!(f, "unimplemented without the `cuda` feature: {what}")
+                #[cfg(feature = "cuda")]
+                {
+                    write!(f, "kernel not implemented: {what}")
+                }
+                #[cfg(not(feature = "cuda"))]
+                {
+                    write!(f, "unimplemented without the `cuda` feature: {what}")
+                }
             }
             LaunchError::InvalidLaunchConfig(msg) => write!(f, "invalid launch config: {msg}"),
             LaunchError::ModuleLoad(msg) => write!(f, "ptx module load failed: {msg}"),
@@ -47,9 +54,15 @@ mod tests {
 
     #[test]
     fn display_messages() {
+        #[cfg(not(feature = "cuda"))]
         assert_eq!(
             LaunchError::Unimplemented("rmsnorm_adjoint_fwd").to_string(),
             "unimplemented without the `cuda` feature: rmsnorm_adjoint_fwd"
+        );
+        #[cfg(feature = "cuda")]
+        assert_eq!(
+            LaunchError::Unimplemented("rmsnorm_adjoint_fwd").to_string(),
+            "kernel not implemented: rmsnorm_adjoint_fwd"
         );
         assert_eq!(
             LaunchError::FunctionNotFound("attention_adjoint_bwd".into()).to_string(),

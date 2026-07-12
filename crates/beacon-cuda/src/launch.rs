@@ -43,7 +43,7 @@ impl From<(u32, u32, u32)> for Dim3 {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct LaunchParams {
     pub grid: Dim3,
     pub block: Dim3,

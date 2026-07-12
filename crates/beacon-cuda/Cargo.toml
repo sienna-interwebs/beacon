@@ -8,10 +8,11 @@ description = "CUDA layer: nvcc->PTX build, cudarc device/stream/arena, typed la
 
 [features]
 default = []
-cuda = []
+cuda = ["dep:cudarc"]
 
 [dependencies]
 beacon-core = { workspace = true }
+cudarc = { workspace = true, optional = true }
 
 [dev-dependencies]
 beacon-adjoint-table = { workspace = true }

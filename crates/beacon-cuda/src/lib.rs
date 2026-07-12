@@ -2,6 +2,8 @@
 #![allow(clippy::too_many_arguments)]
 
 pub mod attention;
+#[cfg(feature = "cuda")]
+pub mod cuda;
 pub mod device;
 pub mod elementwise;
 pub mod error;
@@ -25,6 +27,23 @@ pub use matmul::MatmulLaunch;
 pub use mlp::SwigluLaunch;
 pub use norm::{LayerNormLaunch, RmsNormLaunch};
 pub use runtime::Launcher;
+
+pub const fn cuda_enabled() -> bool {
+    cfg!(feature = "cuda")
+}
+
+#[cfg(feature = "cuda")]
+pub use cuda::{CudaBlas, CudaBlasLT, CudaContext, CudaSlice, CudaStream, Ptx};
+
+#[cfg(test)]
+mod cuda_feature {
+    use super::*;
+
+    #[test]
+    fn cuda_enabled_matches_cfg() {
+        assert_eq!(cuda_enabled(), cfg!(feature = "cuda"));
+    }
+}
 
 #[cfg(test)]
 mod table_consistency {

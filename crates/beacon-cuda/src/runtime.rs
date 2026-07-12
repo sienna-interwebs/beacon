@@ -36,14 +36,7 @@ impl KernelLauncher for Launcher {
     ) -> LaunchResult<()> {
         params.validate()?;
         let _ = args;
-        #[cfg(feature = "cuda")]
-        {
-            Err(LaunchError::Unimplemented(kernel.name()))
-        }
-        #[cfg(not(feature = "cuda"))]
-        {
-            Err(LaunchError::Unimplemented(kernel.name()))
-        }
+        Err(LaunchError::Unimplemented(kernel.name()))
     }
 }
 
