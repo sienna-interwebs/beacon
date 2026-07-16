@@ -100,6 +100,7 @@ impl LaunchParams {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::Device;
 
     #[test]
     fn dim3_conversions_and_total() {
@@ -117,6 +118,16 @@ mod tests {
         assert_eq!(p.total_threads(), 128 * 256);
         let p = p.with_shared_mem(48 * 1024);
         assert_eq!(p.shared_mem_bytes, 48 * 1024);
+    }
+
+    #[test]
+    fn params_on_custom_stream() {
+        let d = Device::new(0).unwrap();
+        let stream = d.new_stream().unwrap();
+        let p = LaunchParams::new(1u32, 1u32).on_stream(stream.clone());
+        assert!(!p.stream.is_default());
+        assert_eq!(p.stream.handle(), stream.handle());
+        assert!(stream.synchronize(&d).is_ok());
     }
 
     #[test]

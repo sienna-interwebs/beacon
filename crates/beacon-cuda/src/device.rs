@@ -1,5 +1,8 @@
 use crate::error::LaunchResult;
 
+#[cfg(not(feature = "cuda"))]
+use std::sync::atomic::{AtomicU64, Ordering};
+
 #[cfg(feature = "cuda")]
 use std::sync::Arc;
 
@@ -15,6 +18,9 @@ pub struct StreamHandle(pub u64);
 impl StreamHandle {
     pub const DEFAULT: StreamHandle = StreamHandle(0);
 }
+
+#[cfg(not(feature = "cuda"))]
+static HOST_STUB_STREAM_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Debug, Clone)]
 pub struct Stream {
@@ -96,6 +102,16 @@ impl Stream {
     pub fn is_default(&self) -> bool {
         self.handle() == StreamHandle::DEFAULT
     }
+
+    pub fn synchronize(&self, device: &Device) -> LaunchResult<()> {
+        #[cfg(feature = "cuda")]
+        {
+            self.cuda_stream(device)?
+                .synchronize()
+                .map_err(map_driver_error)?;
+        }
+        Ok(())
+    }
 }
 
 impl Default for Stream {
@@ -150,7 +166,8 @@ impl Device {
         }
         #[cfg(not(feature = "cuda"))]
         {
-            Ok(Stream::default_stream())
+            let id = HOST_STUB_STREAM_COUNTER.fetch_add(1, Ordering::Relaxed);
+            Ok(Stream::from_handle(StreamHandle(id)))
         }
     }
 
@@ -256,5 +273,46 @@ mod tests {
             assert_eq!(d.id(), DeviceId(0));
             assert!(d.synchronize().is_ok());
         }
+    }
+
+    #[test]
+    fn host_stub_new_stream_returns_distinct_handles() {
+        #[cfg(not(feature = "cuda"))]
+        {
+            let d = Device::new(0).unwrap();
+            let a = d.new_stream().unwrap();
+            let b = d.new_stream().unwrap();
+            assert!(!a.is_default());
+            assert!(!b.is_default());
+            assert_ne!(a.handle(), b.handle());
+            assert!(a.synchronize(&d).is_ok());
+            assert!(b.synchronize(&d).is_ok());
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "cuda")]
+    fn owned_stream_is_non_default_and_syncs() {
+        let Some(d) = device_or_skip() else {
+            return;
+        };
+        let s = d.new_stream().unwrap();
+        assert!(!s.is_default());
+        assert!(s.synchronize(&d).is_ok());
+        let default = d.default_stream();
+        assert!(default.is_default());
+        assert!(default.synchronize(&d).is_ok());
+    }
+
+    #[test]
+    #[cfg(feature = "cuda")]
+    fn owned_streams_are_distinct_from_default() {
+        let Some(d) = device_or_skip() else {
+            return;
+        };
+        let owned = d.new_stream().unwrap();
+        let default_cuda = d.context().default_stream();
+        let owned_cuda = owned.cuda_stream(&d).unwrap();
+        assert!(!std::sync::Arc::ptr_eq(&owned_cuda, default_cuda));
     }
 }
