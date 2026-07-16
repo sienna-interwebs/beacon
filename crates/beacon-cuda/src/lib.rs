@@ -12,6 +12,8 @@ pub mod launcher;
 pub mod matmul;
 pub mod mlp;
 pub mod norm;
+#[cfg(feature = "cuda")]
+pub mod ptx;
 pub mod runtime;
 
 #[cfg(test)]
@@ -34,6 +36,8 @@ pub const fn cuda_enabled() -> bool {
 
 #[cfg(feature = "cuda")]
 pub use cuda::{CudaBlas, CudaBlasLT, CudaContext, CudaSlice, CudaStream, Ptx};
+#[cfg(feature = "cuda")]
+pub use ptx::{ptx_path, PtxArtifact, PTX_ARTIFACTS};
 
 #[cfg(test)]
 mod cuda_feature {
@@ -42,6 +46,13 @@ mod cuda_feature {
     #[test]
     fn cuda_enabled_matches_cfg() {
         assert_eq!(cuda_enabled(), cfg!(feature = "cuda"));
+    }
+
+    #[test]
+    #[cfg(feature = "cuda")]
+    fn ptx_manifest_is_available() {
+        let _ = PTX_ARTIFACTS.len();
+        assert!(ptx_path("nonexistent_kernel").is_none());
     }
 }
 

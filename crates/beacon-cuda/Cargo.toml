@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 description = "CUDA layer: nvcc->PTX build, cudarc device/stream/arena, typed launchers, cublasLt fp8"
+build = "build.rs"
 
 [features]
 default = []
