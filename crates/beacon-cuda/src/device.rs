@@ -1,9 +1,7 @@
-#[cfg(feature = "cuda")]
-use crate::error::LaunchError;
 use crate::error::LaunchResult;
 
 #[cfg(feature = "cuda")]
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 #[cfg(feature = "cuda")]
 use crate::cuda::{CudaContext, CudaStream, map_driver_error};
@@ -76,7 +74,7 @@ impl Stream {
     #[cfg(feature = "cuda")]
     pub fn cuda_stream(&self, device: &Device) -> LaunchResult<Arc<CudaStream>> {
         match &self.inner {
-            StreamInner::Default => Ok(device.context()?.default_stream().clone()),
+            StreamInner::Default => Ok(device.context().default_stream().clone()),
             StreamInner::Owned(stream) => Ok(stream.clone()),
         }
     }
@@ -110,16 +108,25 @@ impl Default for Stream {
 pub struct Device {
     id: DeviceId,
     #[cfg(feature = "cuda")]
-    ctx: OnceLock<Result<Arc<CudaContext>, LaunchError>>,
+    ctx: Arc<CudaContext>,
 }
 
 impl Device {
     pub fn new(ordinal: usize) -> LaunchResult<Self> {
-        Ok(Device {
-            id: DeviceId(ordinal),
-            #[cfg(feature = "cuda")]
-            ctx: OnceLock::new(),
-        })
+        #[cfg(feature = "cuda")]
+        {
+            let ctx = CudaContext::new(ordinal).map_err(map_driver_error)?;
+            Ok(Device {
+                id: DeviceId(ordinal),
+                ctx: Arc::from(ctx),
+            })
+        }
+        #[cfg(not(feature = "cuda"))]
+        {
+            Ok(Device {
+                id: DeviceId(ordinal),
+            })
+        }
     }
 
     pub fn id(&self) -> DeviceId {
@@ -127,14 +134,8 @@ impl Device {
     }
 
     #[cfg(feature = "cuda")]
-    pub fn context(&self) -> LaunchResult<&Arc<CudaContext>> {
-        match self
-            .ctx
-            .get_or_init(|| CudaContext::new(self.id.0).map_err(map_driver_error).map(Arc::from))
-        {
-            Ok(ctx) => Ok(ctx),
-            Err(err) => Err(err.clone()),
-        }
+    pub fn context(&self) -> &Arc<CudaContext> {
+        &self.ctx
     }
 
     pub fn default_stream(&self) -> Stream {
@@ -144,7 +145,7 @@ impl Device {
     pub fn new_stream(&self) -> LaunchResult<Stream> {
         #[cfg(feature = "cuda")]
         {
-            let stream = self.context()?.new_stream().map_err(map_driver_error)?;
+            let stream = self.context().new_stream().map_err(map_driver_error)?;
             Ok(Stream::from_cuda(stream))
         }
         #[cfg(not(feature = "cuda"))]
@@ -156,9 +157,20 @@ impl Device {
     pub fn synchronize(&self) -> LaunchResult<()> {
         #[cfg(feature = "cuda")]
         {
-            self.context()?.synchronize().map_err(map_driver_error)?;
+            self.context().synchronize().map_err(map_driver_error)?;
         }
         Ok(())
+    }
+
+    pub fn shutdown(self) -> LaunchResult<()> {
+        self.synchronize()
+    }
+}
+
+#[cfg(feature = "cuda")]
+impl Drop for Device {
+    fn drop(&mut self) {
+        let _ = self.ctx.synchronize();
     }
 }
 
@@ -166,21 +178,17 @@ impl Device {
 mod tests {
     use super::*;
 
+    #[cfg(feature = "cuda")]
     fn cuda_driver_available() -> bool {
         std::env::var("BEACON_CUDA_TEST").ok().as_deref() == Some("1")
     }
 
     fn device_or_skip() -> Option<Device> {
-        let d = Device::new(0).ok()?;
         #[cfg(feature = "cuda")]
         if !cuda_driver_available() {
-            return Some(d);
-        }
-        #[cfg(feature = "cuda")]
-        if d.context().is_err() {
             return None;
         }
-        Some(d)
+        Device::new(0).ok()
     }
 
     #[test]
@@ -212,20 +220,14 @@ mod tests {
         };
         assert_eq!(d.id(), DeviceId(0));
         assert!(d.default_stream().is_default());
-        #[cfg(feature = "cuda")]
-        if !cuda_driver_available() {
-            return;
-        }
         assert!(d.new_stream().is_ok());
         assert!(d.synchronize().is_ok());
+        assert!(d.shutdown().is_ok());
     }
 
     #[test]
     #[cfg(feature = "cuda")]
     fn cuda_stream_resolves_default() {
-        if !cuda_driver_available() {
-            return;
-        }
         let Some(d) = device_or_skip() else {
             return;
         };
@@ -233,7 +235,26 @@ mod tests {
         let stream = s.cuda_stream(&d).unwrap();
         assert!(std::sync::Arc::ptr_eq(
             &stream,
-            &d.context().unwrap().default_stream()
+            &d.context().default_stream()
         ));
+    }
+
+    #[test]
+    #[cfg(feature = "cuda")]
+    fn context_initialized_on_new() {
+        let Some(d) = device_or_skip() else {
+            return;
+        };
+        assert_eq!(d.context().ordinal(), d.id().0);
+    }
+
+    #[test]
+    fn host_stub_device_without_cuda_feature() {
+        #[cfg(not(feature = "cuda"))]
+        {
+            let d = Device::new(0).unwrap();
+            assert_eq!(d.id(), DeviceId(0));
+            assert!(d.synchronize().is_ok());
+        }
     }
 }
