@@ -5,6 +5,7 @@ pub mod attention;
 #[cfg(feature = "cuda")]
 pub mod cuda;
 pub mod device;
+pub mod device_arena;
 pub mod elementwise;
 pub mod error;
 pub mod launch;
@@ -21,6 +22,7 @@ mod testutil;
 
 pub use attention::AttentionLaunch;
 pub use device::{Device, DeviceId, Stream, StreamHandle};
+pub use device_arena::DeviceArena;
 pub use elementwise::{CastKind, ElementwiseLaunch};
 pub use error::{LaunchError, LaunchResult};
 pub use launch::{Dim3, LaunchParams, MAX_DYNAMIC_SMEM_BYTES, MAX_THREADS_PER_BLOCK};
