@@ -5,7 +5,6 @@ pub mod attention;
 pub mod blas;
 #[cfg(feature = "cuda")]
 pub mod cuda;
-pub mod copy;
 pub mod device;
 pub mod device_arena;
 pub mod elementwise;
@@ -14,8 +13,8 @@ pub mod launch;
 pub mod launcher;
 pub mod matmul;
 pub mod mlp;
+pub mod modules;
 pub mod norm;
-#[cfg(feature = "cuda")]
 pub mod ptx;
 pub mod runtime;
 
@@ -24,7 +23,6 @@ mod testutil;
 
 pub use attention::AttentionLaunch;
 pub use blas::BlasHandles;
-pub use copy::{copy_dtoh, copy_dtoh_to_host_arena, copy_htod, copy_htod_from_host_arena};
 pub use device::{Device, DeviceId, Stream, StreamHandle};
 pub use device_arena::DeviceArena;
 pub use elementwise::{CastKind, ElementwiseLaunch};
@@ -33,7 +31,9 @@ pub use launch::{Dim3, LaunchParams, MAX_DYNAMIC_SMEM_BYTES, MAX_THREADS_PER_BLO
 pub use launcher::{Access, KernelArg, KernelId, KernelLauncher};
 pub use matmul::MatmulLaunch;
 pub use mlp::SwigluLaunch;
+pub use modules::ModuleCache;
 pub use norm::{LayerNormLaunch, RmsNormLaunch};
+pub use ptx::{ptx_path, PtxArtifact, PTX_ARTIFACTS};
 pub use runtime::Launcher;
 
 pub const fn cuda_enabled() -> bool {
@@ -41,9 +41,7 @@ pub const fn cuda_enabled() -> bool {
 }
 
 #[cfg(feature = "cuda")]
-pub use cuda::{CudaBlas, CudaBlasLT, CudaContext, CudaSlice, CudaStream, Ptx};
-#[cfg(feature = "cuda")]
-pub use ptx::{ptx_path, PtxArtifact, PTX_ARTIFACTS};
+pub use cuda::{CudaBlas, CudaBlasLT, CudaContext, CudaFunction, CudaModule, CudaSlice, CudaStream, Ptx};
 
 #[cfg(test)]
 mod cuda_feature {

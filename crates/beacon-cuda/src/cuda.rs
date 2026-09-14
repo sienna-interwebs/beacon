@@ -1,6 +1,8 @@
 pub use cudarc::cublas::safe::CudaBlas;
 pub use cudarc::cublaslt::safe::CudaBlasLT;
-pub use cudarc::driver::safe::{CudaContext, CudaSlice, CudaStream, CudaView, CudaViewMut};
+pub use cudarc::driver::safe::{
+    CudaContext, CudaFunction, CudaModule, CudaSlice, CudaStream, CudaView, CudaViewMut,
+};
 pub use cudarc::driver::DriverError;
 pub use cudarc::nvrtc::Ptx;
 
