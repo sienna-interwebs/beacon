@@ -8,6 +8,7 @@ pub mod cuda;
 pub mod device;
 pub mod device_arena;
 pub mod elementwise;
+pub mod elementwise_launch;
 pub mod error;
 pub mod launch;
 pub mod launcher;

@@ -1,25 +1,55 @@
 use crate::device::{Device, DeviceId};
+use crate::elementwise::kid;
+#[cfg(feature = "cuda")]
+use crate::elementwise_launch::launch_residual_add_fwd;
 use crate::error::{LaunchError, LaunchResult};
 use crate::launch::LaunchParams;
 use crate::launcher::{KernelArg, KernelId, KernelLauncher};
+#[cfg(feature = "cuda")]
+use std::cell::RefCell;
+
+#[cfg(feature = "cuda")]
+use crate::modules::ModuleCache;
+
+#[cfg(feature = "cuda")]
+use crate::cuda::CudaSlice;
 
 pub struct Launcher {
     device: Device,
+    #[cfg(feature = "cuda")]
+    modules: RefCell<ModuleCache>,
+    #[cfg(feature = "cuda")]
+    arena: RefCell<Option<CudaSlice<u8>>>,
 }
 
 impl Launcher {
     pub fn new(device: Device) -> Self {
-        Launcher { device }
+        Launcher {
+            device,
+            #[cfg(feature = "cuda")]
+            modules: RefCell::new(ModuleCache::new()),
+            #[cfg(feature = "cuda")]
+            arena: RefCell::new(None),
+        }
     }
 
     pub fn on_device(ordinal: usize) -> LaunchResult<Self> {
         Ok(Launcher {
             device: Device::new(ordinal)?,
+            #[cfg(feature = "cuda")]
+            modules: RefCell::new(ModuleCache::new()),
+            #[cfg(feature = "cuda")]
+            arena: RefCell::new(None),
         })
     }
 
     pub fn device_ref(&self) -> &Device {
         &self.device
+    }
+
+    #[cfg(feature = "cuda")]
+    pub fn bind_device_arena(&self, arena: &crate::device_arena::DeviceArena) {
+        *self.arena.borrow_mut() = Some(crate::elementwise_launch::arena_slice_from(arena));
     }
 }
 
@@ -35,6 +65,24 @@ impl KernelLauncher for Launcher {
         args: &[KernelArg],
     ) -> LaunchResult<()> {
         params.validate()?;
+        #[cfg(feature = "cuda")]
+        {
+            if kernel.name() == kid::RESIDUAL_ADD_FWD.name() {
+                let arena = self.arena.borrow();
+                let Some(buf) = arena.as_ref() else {
+                    return Err(LaunchError::InvalidLaunchConfig(
+                        "device arena not bound on launcher".into(),
+                    ));
+                };
+                return launch_residual_add_fwd(
+                    &self.device,
+                    &mut self.modules.borrow_mut(),
+                    buf,
+                    &params,
+                    args,
+                );
+            }
+        }
         let _ = args;
         Err(LaunchError::Unimplemented(kernel.name()))
     }
@@ -65,10 +113,20 @@ mod tests {
     #[test]
     fn elementwise_methods_are_unimplemented_with_kernel_name() {
         let l = launcher();
-        assert_eq!(
-            l.residual_add(KernelArg::write(0, 256), a(), a(), 64),
-            Err(LaunchError::Unimplemented("residual_add_fwd"))
-        );
+        #[cfg(not(feature = "cuda"))]
+        {
+            assert_eq!(
+                l.residual_add(KernelArg::write(0, 256), a(), a(), 64),
+                Err(LaunchError::Unimplemented("residual_add_fwd"))
+            );
+        }
+        #[cfg(feature = "cuda")]
+        {
+            assert!(matches!(
+                l.residual_add(KernelArg::write(0, 256), a(), a(), 64),
+                Err(LaunchError::InvalidLaunchConfig(_))
+            ));
+        }
         assert_eq!(
             l.cast(KernelArg::write(0, 256), a(), 64, CastKind::F32ToF8E4M3),
             Err(LaunchError::Unimplemented("cast_f32_to_fp8e4m3"))
