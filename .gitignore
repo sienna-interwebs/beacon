@@ -1,7 +1,6 @@
 /target
 **/*.rs.bk
 Cargo.lock
-# fixtures / generated artifacts (added in later phases)
+# fixtures / generated artifacts
 *.npz
 *.ptx
-linear-deliverables.md
