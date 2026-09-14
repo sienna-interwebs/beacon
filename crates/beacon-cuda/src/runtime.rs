@@ -1,7 +1,7 @@
 use crate::device::{Device, DeviceId};
 use crate::elementwise::kid;
 #[cfg(feature = "cuda")]
-use crate::elementwise_launch::launch_residual_add_fwd;
+use crate::elementwise_launch::{launch_residual_add_bwd, launch_residual_add_fwd};
 use crate::error::{LaunchError, LaunchResult};
 use crate::launch::LaunchParams;
 use crate::launcher::{KernelArg, KernelId, KernelLauncher};
@@ -67,16 +67,28 @@ impl KernelLauncher for Launcher {
         params.validate()?;
         #[cfg(feature = "cuda")]
         {
-            if kernel.name() == kid::RESIDUAL_ADD_FWD.name() {
+            if kernel.name() == kid::RESIDUAL_ADD_FWD.name()
+                || kernel.name() == kid::RESIDUAL_ADD_BWD.name()
+            {
                 let arena = self.arena.borrow();
                 let Some(buf) = arena.as_ref() else {
                     return Err(LaunchError::InvalidLaunchConfig(
                         "device arena not bound on launcher".into(),
                     ));
                 };
-                return launch_residual_add_fwd(
+                let mut modules = self.modules.borrow_mut();
+                if kernel.name() == kid::RESIDUAL_ADD_FWD.name() {
+                    return launch_residual_add_fwd(
+                        &self.device,
+                        &mut modules,
+                        buf,
+                        &params,
+                        args,
+                    );
+                }
+                return launch_residual_add_bwd(
                     &self.device,
-                    &mut self.modules.borrow_mut(),
+                    &mut modules,
                     buf,
                     &params,
                     args,
@@ -126,6 +138,27 @@ mod tests {
                 l.residual_add(KernelArg::write(0, 256), a(), a(), 64),
                 Err(LaunchError::InvalidLaunchConfig(_))
             ));
+            assert!(matches!(
+                l.residual_add_backward(
+                    KernelArg::read_write(0, 256),
+                    KernelArg::read_write(256, 256),
+                    a(),
+                    64
+                ),
+                Err(LaunchError::InvalidLaunchConfig(_))
+            ));
+        }
+        #[cfg(not(feature = "cuda"))]
+        {
+            assert_eq!(
+                l.residual_add_backward(
+                    KernelArg::read_write(0, 256),
+                    KernelArg::read_write(256, 256),
+                    a(),
+                    64
+                ),
+                Err(LaunchError::Unimplemented("residual_add_bwd"))
+            );
         }
         assert_eq!(
             l.cast(KernelArg::write(0, 256), a(), 64, CastKind::F32ToF8E4M3),
