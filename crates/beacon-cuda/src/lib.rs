@@ -2,6 +2,7 @@
 #![allow(clippy::too_many_arguments)]
 
 pub mod attention;
+pub mod blas;
 #[cfg(feature = "cuda")]
 pub mod cuda;
 pub mod copy;
@@ -22,6 +23,7 @@ pub mod runtime;
 mod testutil;
 
 pub use attention::AttentionLaunch;
+pub use blas::BlasHandles;
 pub use copy::{copy_dtoh, copy_dtoh_to_host_arena, copy_htod, copy_htod_from_host_arena};
 pub use device::{Device, DeviceId, Stream, StreamHandle};
 pub use device_arena::DeviceArena;
