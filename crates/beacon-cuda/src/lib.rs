@@ -4,6 +4,7 @@
 pub mod attention;
 #[cfg(feature = "cuda")]
 pub mod cuda;
+pub mod copy;
 pub mod device;
 pub mod device_arena;
 pub mod elementwise;
@@ -21,6 +22,7 @@ pub mod runtime;
 mod testutil;
 
 pub use attention::AttentionLaunch;
+pub use copy::{copy_dtoh, copy_dtoh_to_host_arena, copy_htod, copy_htod_from_host_arena};
 pub use device::{Device, DeviceId, Stream, StreamHandle};
 pub use device_arena::DeviceArena;
 pub use elementwise::{CastKind, ElementwiseLaunch};
