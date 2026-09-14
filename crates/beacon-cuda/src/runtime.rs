@@ -1,7 +1,9 @@
 use crate::device::{Device, DeviceId};
 use crate::elementwise::kid;
 #[cfg(feature = "cuda")]
-use crate::elementwise_launch::{launch_residual_add_bwd, launch_residual_add_fwd};
+use crate::elementwise_launch::{
+    launch_embedding_lookup_fwd, launch_residual_add_bwd, launch_residual_add_fwd,
+};
 use crate::error::{LaunchError, LaunchResult};
 use crate::launch::LaunchParams;
 use crate::launcher::{KernelArg, KernelId, KernelLauncher};
@@ -67,32 +69,43 @@ impl KernelLauncher for Launcher {
         params.validate()?;
         #[cfg(feature = "cuda")]
         {
-            if kernel.name() == kid::RESIDUAL_ADD_FWD.name()
-                || kernel.name() == kid::RESIDUAL_ADD_BWD.name()
-            {
-                let arena = self.arena.borrow();
-                let Some(buf) = arena.as_ref() else {
-                    return Err(LaunchError::InvalidLaunchConfig(
-                        "device arena not bound on launcher".into(),
-                    ));
-                };
-                let mut modules = self.modules.borrow_mut();
-                if kernel.name() == kid::RESIDUAL_ADD_FWD.name() {
-                    return launch_residual_add_fwd(
-                        &self.device,
-                        &mut modules,
-                        buf,
-                        &params,
-                        args,
-                    );
+            match kernel.name() {
+                n if n == kid::RESIDUAL_ADD_FWD.name()
+                    || n == kid::RESIDUAL_ADD_BWD.name()
+                    || n == kid::EMBEDDING_FWD.name() =>
+                {
+                    let arena = self.arena.borrow();
+                    let Some(buf) = arena.as_ref() else {
+                        return Err(LaunchError::InvalidLaunchConfig(
+                            "device arena not bound on launcher".into(),
+                        ));
+                    };
+                    let mut modules = self.modules.borrow_mut();
+                    return match kernel.name() {
+                        n if n == kid::RESIDUAL_ADD_FWD.name() => launch_residual_add_fwd(
+                            &self.device,
+                            &mut modules,
+                            buf,
+                            &params,
+                            args,
+                        ),
+                        n if n == kid::RESIDUAL_ADD_BWD.name() => launch_residual_add_bwd(
+                            &self.device,
+                            &mut modules,
+                            buf,
+                            &params,
+                            args,
+                        ),
+                        _ => launch_embedding_lookup_fwd(
+                            &self.device,
+                            &mut modules,
+                            buf,
+                            &params,
+                            args,
+                        ),
+                    };
                 }
-                return launch_residual_add_bwd(
-                    &self.device,
-                    &mut modules,
-                    buf,
-                    &params,
-                    args,
-                );
+                _ => {}
             }
         }
         let _ = args;
@@ -159,6 +172,20 @@ mod tests {
                 ),
                 Err(LaunchError::Unimplemented("residual_add_bwd"))
             );
+        }
+        #[cfg(not(feature = "cuda"))]
+        {
+            assert_eq!(
+                l.embedding_lookup(KernelArg::write(0, 256), a(), a(), 8, 32),
+                Err(LaunchError::Unimplemented("embedding_lookup_fwd"))
+            );
+        }
+        #[cfg(feature = "cuda")]
+        {
+            assert!(matches!(
+                l.embedding_lookup(KernelArg::write(0, 256), a(), a(), 8, 32),
+                Err(LaunchError::InvalidLaunchConfig(_))
+            ));
         }
         assert_eq!(
             l.cast(KernelArg::write(0, 256), a(), 64, CastKind::F32ToF8E4M3),

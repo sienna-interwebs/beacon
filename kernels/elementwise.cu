@@ -30,3 +30,28 @@ extern "C" __global__ void residual_add_bwd(
     db[i] += dout[i];
   }
 }
+
+extern "C" __global__ void embedding_lookup_fwd(
+    char* arena,
+    size_t out_off,
+    size_t table_off,
+    size_t indices_off,
+    int embed_dim,
+    int vocab_size,
+    int num_tokens) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int total = num_tokens * embed_dim;
+  if (tid >= total) {
+    return;
+  }
+  int token = tid / embed_dim;
+  int d = tid % embed_dim;
+  const int* indices = reinterpret_cast<const int*>(arena + indices_off);
+  int idx = indices[token];
+  if (idx < 0 || idx >= vocab_size) {
+    return;
+  }
+  const float* table = reinterpret_cast<const float*>(arena + table_off);
+  float* out = reinterpret_cast<float*>(arena + out_off);
+  out[tid] = table[static_cast<size_t>(idx) * embed_dim + d];
+}

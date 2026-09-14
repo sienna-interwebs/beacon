@@ -138,6 +138,106 @@ pub fn launch_residual_add_bwd(
 }
 
 #[cfg(feature = "cuda")]
+fn check_arena_range(arena: &CudaSlice<u8>, arg: KernelArg, label: &str) -> LaunchResult<()> {
+    let end = arg.offset.saturating_add(arg.len_bytes);
+    if end > arena.len() {
+        return Err(LaunchError::InvalidLaunchConfig(format!(
+            "{label} byte range [{}, {end}) exceeds arena size {}",
+            arg.offset,
+            arena.len()
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(feature = "cuda")]
+pub fn launch_embedding_lookup_fwd(
+    device: &Device,
+    modules: &mut ModuleCache,
+    arena: &CudaSlice<u8>,
+    params: &LaunchParams,
+    args: &[KernelArg],
+) -> LaunchResult<()> {
+    if args.len() != 3 {
+        return Err(LaunchError::InvalidLaunchConfig(format!(
+            "embedding_lookup_fwd expects 3 args, got {}",
+            args.len()
+        )));
+    }
+    let out = args[0];
+    let table = args[1];
+    let indices = args[2];
+    if indices.len_bytes % 4 != 0 {
+        return Err(LaunchError::InvalidLaunchConfig(
+            "embedding_lookup_fwd indices must be a multiple of 4 bytes (i32 token ids)".into(),
+        ));
+    }
+    if out.len_bytes % 4 != 0 {
+        return Err(LaunchError::InvalidLaunchConfig(
+            "embedding_lookup_fwd output must be a multiple of 4 bytes (f32)".into(),
+        ));
+    }
+    if table.len_bytes % 4 != 0 {
+        return Err(LaunchError::InvalidLaunchConfig(
+            "embedding_lookup_fwd table must be a multiple of 4 bytes (f32)".into(),
+        ));
+    }
+    let num_tokens = (indices.len_bytes / 4) as i32;
+    if num_tokens == 0 {
+        return Err(LaunchError::InvalidLaunchConfig(
+            "embedding_lookup_fwd requires at least one token".into(),
+        ));
+    }
+    if out.len_bytes % (num_tokens as usize * 4) != 0 {
+        return Err(LaunchError::ShapeMismatch {
+            expected: format!("out bytes divisible by {} tokens", num_tokens),
+            found: format!("{} bytes", out.len_bytes),
+        });
+    }
+    let embed_dim = (out.len_bytes / 4 / num_tokens as usize) as i32;
+    if embed_dim == 0 {
+        return Err(LaunchError::InvalidLaunchConfig(
+            "embedding_lookup_fwd embed_dim must be positive".into(),
+        ));
+    }
+    let row_bytes = embed_dim as usize * 4;
+    if table.len_bytes % row_bytes != 0 {
+        return Err(LaunchError::ShapeMismatch {
+            expected: format!("table bytes divisible by row size {row_bytes}"),
+            found: format!("{} bytes", table.len_bytes),
+        });
+    }
+    let vocab_size = (table.len_bytes / row_bytes) as i32;
+    for (label, arg) in [("out", out), ("table", table), ("indices", indices)] {
+        check_arena_range(arena, arg, label)?;
+    }
+    let func = modules.function(device, ELEMENTWISE_MODULE, kid::EMBEDDING_FWD.name())?;
+    let stream = params.stream.cuda_stream(device)?;
+    let cfg = LaunchConfig {
+        grid_dim: (params.grid.x, params.grid.y, params.grid.z),
+        block_dim: (params.block.x, params.block.y, params.block.z),
+        shared_mem_bytes: params.shared_mem_bytes,
+    };
+    let out_off = out.offset as u64;
+    let table_off = table.offset as u64;
+    let indices_off = indices.offset as u64;
+    unsafe {
+        stream
+            .launch_builder(&func)
+            .arg(arena)
+            .arg(&out_off)
+            .arg(&table_off)
+            .arg(&indices_off)
+            .arg(&embed_dim)
+            .arg(&vocab_size)
+            .arg(&num_tokens)
+            .launch(cfg)
+            .map_err(map_driver_error)?;
+    }
+    Ok(())
+}
+
+#[cfg(feature = "cuda")]
 pub fn arena_slice_from(arena: &DeviceArena) -> CudaSlice<u8> {
     arena.device_buf().clone()
 }
